@@ -72,24 +72,25 @@ class BankAccount(AbstractAccount):
     def __str__(self):
         return self.get_account_info()
 
-# Создаём активный счёт
-acc1 = BankAccount("Иван Иванов", balance=1000)
-print(acc1)
+if __name__ == '__main__':
+    # Создаём активный счёт
+    acc1 = BankAccount("Иван Иванов", balance=1000)
+    print(acc1)
 
-# Создаём замороженный счёт
-acc2 = BankAccount("Пётр Петров", status=AccountStatus.FROZEN)
-print(acc2)
+    # Создаём замороженный счёт
+    acc2 = BankAccount("Пётр Петров", status=AccountStatus.FROZEN)
+    print(acc2)
 
-# Пробуем операцию на замороженном
-try:
-    acc2.deposit(500)
-except AccountFrozenError as e:
-    print(f"Ошибка: {e}")
+    # Пробуем операцию на замороженном
+    try:
+        acc2.deposit(500)
+    except AccountFrozenError as e:
+        print(f"Ошибка: {e}")
 
-# Пополняем активный
-acc1.deposit(500)
-print(acc1)
+    # Пополняем активный
+    acc1.deposit(500)
+    print(acc1)
 
-# Снимаем с активного
-acc1.withdraw(200)
-print(acc1)
+    # Снимаем с активного
+    acc1.withdraw(200)
+    print(acc1)
