@@ -87,26 +87,24 @@ class InvestmentAccount(BankAccount):
         return self.get_account_info()
 
 
-# SavingsAccount
-sav = SavingsAccount("Алексей Смирнов", balance=50000, min_balance=10000, monthly_rate=0.05)
-print(sav)
-sav.apply_monthly_interest()
-print("После начисления процентов:")
-print(sav)
-try:
-    sav.withdraw(45000)
-except InvalidOperationError as e:
-    print(f"Ошибка: {e}")
+if __name__ == '__main__':
+    sav = SavingsAccount("Алексей Смирнов", balance=50000, min_balance=10000, monthly_rate=0.05)
+    print(sav)
+    sav.apply_monthly_interest()
+    print("После начисления процентов:")
+    print(sav)
+    try:
+        sav.withdraw(45000)
+    except InvalidOperationError as e:
+        print(f"Ошибка: {e}")
 
-# PremiumAccount
-prem = PremiumAccount("Елена Иванова", balance=100000, overdraft_limit=50000, commission=200)
-print(prem)
-prem.withdraw(30000)
-print("После снятия с комиссией:")
-print(prem)
+    prem = PremiumAccount("Елена Иванова", balance=100000, overdraft_limit=50000, commission=200)
+    print(prem)
+    prem.withdraw(30000)
+    print("После снятия с комиссией:")
+    print(prem)
 
-# InvestmentAccount
-inv = InvestmentAccount("Дмитрий Козлов", balance=200000, portfolio={'stocks': 80000, 'bonds': 50000, 'etf': 30000})
-print(inv)
-print(f"Прогноз роста портфеля за год (10%): {inv.project_yearly_growth()}")
-print(f"Прогноз роста портфеля за год (15%): {inv.project_yearly_growth(0.15)}")
+    inv = InvestmentAccount("Дмитрий Козлов", balance=200000, portfolio={'stocks': 80000, 'bonds': 50000, 'etf': 30000})
+    print(inv)
+    print(f"Прогноз роста портфеля за год (10%): {inv.project_yearly_growth()}")
+    print(f"Прогноз роста портфеля за год (15%): {inv.project_yearly_growth(0.15)}")
