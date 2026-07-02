@@ -26,8 +26,12 @@ class RobotsParser:
         if self._own_session is None or self._own_session.closed:
             self._own_session = aiohttp.ClientSession()
         try:
-            async with self._own_session.get(url) as response:
-                if response.status >= 400:
+            # allow_redirects=False: a redirect could point robots.txt fetches at a
+            # different origin, letting that origin's operator define crawl policy for
+            # a domain it doesn't control. Treat any redirect as "no robots.txt", same
+            # as a 404 -- per RFC 9309 SS2.3.1.2, redirects are not guaranteed to be honored.
+            async with self._own_session.get(url, allow_redirects=False) as response:
+                if response.status >= 400 or response.status in (301, 302, 303, 307, 308):
                     return None
                 return await response.text()
         except aiohttp.ClientError:

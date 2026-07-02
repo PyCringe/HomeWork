@@ -10,6 +10,16 @@ from data_storage import DataStorage
 
 FIELDNAMES = ["url", "title", "text", "links", "metadata", "crawled_at", "status_code", "content_type"]
 TEXT_PREVIEW_LENGTH = 500
+FORMULA_TRIGGER_CHARS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _neutralize(value: str) -> str:
+    """Prefix values that Excel/Sheets would interpret as a formula, since crawled
+    page content (title, text, ...) is untrusted and CSV formula injection can lead
+    to arbitrary command execution for whoever opens the file in a spreadsheet app."""
+    if value and value[0] in FORMULA_TRIGGER_CHARS:
+        return "'" + value
+    return value
 
 
 class CSVStorage(DataStorage):
@@ -22,14 +32,14 @@ class CSVStorage(DataStorage):
     def _row_from_data(self, data: dict) -> dict:
         text = data.get("text") or ""
         return {
-            "url": data.get("url", ""),
-            "title": data.get("title") or "",
-            "text": text[:TEXT_PREVIEW_LENGTH],
-            "links": json.dumps(data.get("links", []), ensure_ascii=False),
-            "metadata": json.dumps(data.get("metadata", {}), ensure_ascii=False),
+            "url": _neutralize(data.get("url", "")),
+            "title": _neutralize(data.get("title") or ""),
+            "text": _neutralize(text[:TEXT_PREVIEW_LENGTH]),
+            "links": _neutralize(json.dumps(data.get("links", []), ensure_ascii=False)),
+            "metadata": _neutralize(json.dumps(data.get("metadata", {}), ensure_ascii=False)),
             "crawled_at": data.get("crawled_at", ""),
             "status_code": data.get("status_code", ""),
-            "content_type": data.get("content_type", ""),
+            "content_type": _neutralize(data.get("content_type", "")),
         }
 
     async def save(self, data: dict):

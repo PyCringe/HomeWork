@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timezone
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import aiohttp
 
@@ -97,7 +97,15 @@ class AsyncCrawler:
         async with self._semaphore:
             logger.info("-> start fetching %s", url)
             try:
-                async with session.get(url, timeout=timeout) as response:
+                # allow_redirects=False: redirects are resolved manually in _fetch_full so
+                # every hop re-checks robots.txt, rate limits and circuit breaker for its
+                # own domain -- otherwise a redirect could silently escape those checks.
+                async with session.get(url, timeout=timeout, allow_redirects=False) as response:
+                    if response.status in (301, 302, 303, 307, 308):
+                        location = response.headers.get("Location")
+                        if not location:
+                            raise TransientError("redirect without Location header", url=url, status=response.status)
+                        return {"redirect_to": urljoin(url, location)}
                     if response.status >= 400:
                         error_cls = classify_http_status(response.status)
                         raise error_cls(f"HTTP {response.status}", url=url, status=response.status)
@@ -107,13 +115,14 @@ class AsyncCrawler:
                         "text": text,
                         "status": response.status,
                         "content_type": response.content_type,
+                        "redirect_to": None,
                     }
             except asyncio.TimeoutError as e:
                 raise TransientError("request timed out", url=url, cause=e) from e
             except aiohttp.ClientError as e:
                 raise NetworkError(str(e), url=url, cause=e) from e
 
-    async def _fetch_full(self, url: str) -> dict:
+    async def _fetch_one_hop(self, url: str) -> dict:
         domain = urlparse(url).netloc
 
         if self.circuit_breaker.is_open(domain):
@@ -147,6 +156,19 @@ class AsyncCrawler:
             self.circuit_breaker.record_failure(domain)
             raise
 
+    async def _fetch_full(self, url: str, max_redirects: int = 5) -> dict:
+        current_url = url
+        for _ in range(max_redirects + 1):
+            result = await self._fetch_one_hop(current_url)
+            redirect_to = result.get("redirect_to")
+            if redirect_to is None:
+                result["requested_url"] = url
+                result["final_url"] = current_url
+                return result
+            logger.info("redirect %s -> %s", current_url, redirect_to)
+            current_url = redirect_to
+        raise TransientError(f"too many redirects starting at {url}", url=url)
+
     async def fetch_url(self, url: str) -> str:
         result = await self._fetch_full(url)
         return result["text"]
@@ -163,7 +185,10 @@ class AsyncCrawler:
 
     async def fetch_and_parse(self, url: str) -> dict:
         fetched = await self._fetch_full(url)
-        record = await self._parser.parse_html(fetched["text"], url)
+        # parse against final_url (post-redirect) so relative links resolve against the
+        # page that actually served the HTML, not the originally requested URL
+        record = await self._parser.parse_html(fetched["text"], fetched["final_url"])
+        record["requested_url"] = fetched["requested_url"]
         record["crawled_at"] = datetime.now(timezone.utc).isoformat()
         record["status_code"] = fetched["status"]
         record["content_type"] = fetched["content_type"]
