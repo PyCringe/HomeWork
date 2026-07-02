@@ -1,0 +1,13 @@
+{
+  "start_urls": ["https://docs.python.org/3/"],
+  "max_pages": 10,
+  "max_depth": 1,
+  "max_concurrent": 5,
+  "requests_per_second": 2.0,
+  "respect_robots": true,
+  "same_domain_only": true,
+  "output": "results.jsonl",
+  "output_format": "jsonl",
+  "log_file": "crawler.log",
+  "log_level": "INFO"
+}
